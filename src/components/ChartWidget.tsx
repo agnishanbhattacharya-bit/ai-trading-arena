@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, HistogramData, Time } from "lightweight-charts";
+import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, HistogramData, Time, CandlestickSeries, HistogramSeries } from "lightweight-charts";
 import { motion } from "framer-motion";
 
 interface ChartWidgetProps {
@@ -85,7 +85,7 @@ export const ChartWidget = ({ ticker }: ChartWidgetProps) => {
 
     chartRef.current = chart;
 
-    const candleSeries = chart.addCandlestickSeries({
+    const candleSeries = chart.addSeries(CandlestickSeries, {
       upColor: "hsl(160, 100%, 50%)",
       downColor: "hsl(0, 72%, 51%)",
       borderDownColor: "hsl(0, 72%, 51%)",
@@ -95,7 +95,7 @@ export const ChartWidget = ({ ticker }: ChartWidgetProps) => {
     });
     candleSeriesRef.current = candleSeries;
 
-    const volumeSeries = chart.addHistogramSeries({
+    const volumeSeries = chart.addSeries(HistogramSeries, {
       priceFormat: { type: "volume" },
       priceScaleId: "",
     });
