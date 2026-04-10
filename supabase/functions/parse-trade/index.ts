@@ -117,7 +117,12 @@ async function buildAlpacaOrder(trade: ParsedTrade, alpacaKey: string, alpacaSec
 
 async function submitToAlpaca(trade: ParsedTrade, alpacaKey: string, alpacaSecret: string): Promise<AlpacaResult> {
   try {
-    const order = mapToAlpacaOrder(trade);
+    const { order, rounding_info } = await buildAlpacaOrder(trade, alpacaKey, alpacaSecret);
+
+    // If we couldn't even build a valid order (e.g., less than 1 share)
+    if (rounding_info && !order.qty && !order.notional) {
+      return { trade, success: false, error: rounding_info };
+    }
 
     const res = await fetch(`${ALPACA_BASE}/v2/orders`, {
       method: "POST",
@@ -142,6 +147,7 @@ async function submitToAlpaca(trade: ParsedTrade, alpacaKey: string, alpacaSecre
       alpaca_order_id: body.id,
       filled_qty: Number(body.filled_qty) || 0,
       filled_avg_price: Number(body.filled_avg_price) || 0,
+      rounding_info,
     };
   } catch (err) {
     return { trade, success: false, error: err instanceof Error ? err.message : "Network error calling Alpaca" };
