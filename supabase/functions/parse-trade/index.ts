@@ -9,9 +9,13 @@ const corsHeaders = {
 const SYSTEM_PROMPT = `You are an advanced quantitative trading algorithm. Your only job is to read the user's trading strategy and extract the parameters into a strictly formatted JSON object. Return ONLY valid JSON, with no markdown tags or conversational text. If the user specifies multiple trades, return a JSON array of objects. If only one trade, still return an array with one object. Each object must include these exact keys: action (Buy/Short/Liquidate/Rebalance), asset (Ticker symbol in uppercase), amount_usd (Number), order_type (Market/Limit/Bracket), stop_loss_pct (Number or null), and take_profit_pct (Number or null).`;
 
 const MODELS = [
-  "gemini-2.0-flash",
+  "gemini-3.1-pro-preview",
+  "gemini-2.5-pro",
+  "gemini-1.5-pro",
+  "gemini-3.1-flash-preview",
   "gemini-2.5-flash",
   "gemini-1.5-flash",
+  "gemini-1.5-flash-8b",
 ];
 
 serve(async (req) => {
