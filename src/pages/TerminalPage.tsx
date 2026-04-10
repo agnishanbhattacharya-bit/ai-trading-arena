@@ -113,6 +113,12 @@ const TerminalPage = () => {
           description: `${successes} order(s) accepted by Alpaca Paper Trading.`,
         });
       }
+      // Show rounding info toasts
+      for (const result of results) {
+        if (result.success && result.rounding_info) {
+          toast.info(`${result.trade.asset}: ${result.rounding_info}`);
+        }
+      }
       for (const fail of failures) {
         toast.error(`Alpaca rejected: ${fail.trade.asset}`, {
           description: fail.error || "Unknown Alpaca error",
