@@ -20,6 +20,7 @@ interface AlpacaResult {
   success: boolean;
   alpaca_order_id?: string;
   error?: string;
+  rounding_info?: string;
 }
 
 const EXAMPLE_COMMANDS = [
