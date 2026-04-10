@@ -14,7 +14,114 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      portfolios: {
+        Row: {
+          cash_balance: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cash_balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cash_balance?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      positions: {
+        Row: {
+          avg_entry_price: number
+          created_at: string
+          current_price: number
+          id: string
+          position_type: string
+          shares: number
+          ticker: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_entry_price?: number
+          created_at?: string
+          current_price?: number
+          id?: string
+          position_type: string
+          shares?: number
+          ticker: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_entry_price?: number
+          created_at?: string
+          current_price?: number
+          id?: string
+          position_type?: string
+          shares?: number
+          ticker?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      trade_logs: {
+        Row: {
+          command_text: string
+          created_at: string
+          id: string
+          parsed_json: Json
+          status: string
+          user_id: string
+        }
+        Insert: {
+          command_text: string
+          created_at?: string
+          id?: string
+          parsed_json: Json
+          status?: string
+          user_id: string
+        }
+        Update: {
+          command_text?: string
+          created_at?: string
+          id?: string
+          parsed_json?: Json
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
