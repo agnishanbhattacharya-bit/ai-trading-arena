@@ -4,7 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Zap, ChevronRight, Loader2 } from "lucide-react";
+import { Zap, ChevronRight, Loader2, CheckCircle2, XCircle } from "lucide-react";
 
 interface ParsedTrade {
   action: string;
@@ -15,25 +15,33 @@ interface ParsedTrade {
   take_profit_pct: number | null;
 }
 
-function getMockPrice(ticker: string): number {
-  const prices: Record<string, number> = {
-    NVDA: 875.30, AAPL: 192.50, MSFT: 420.10, GOOGL: 175.80,
-    AMZN: 185.60, META: 510.20, TSLA: 245.70, INTC: 31.50,
-    AMD: 165.40, SPY: 520.80,
-  };
-  return prices[ticker] ?? (50 + Math.random() * 200);
+interface AlpacaResult {
+  trade: ParsedTrade;
+  success: boolean;
+  alpaca_order_id?: string;
+  error?: string;
 }
+
+const EXAMPLE_COMMANDS = [
+  "Go long $10,000 on NVDA with a 5% stop-loss",
+  "Short $5,000 of INTC",
+  "Buy $15,000 of AAPL with a 3% stop-loss and 10% take-profit",
+  "Go long $20,000 on MSFT, and short $8,000 of TSLA",
+  "Rebalance my portfolio: liquidate INTC and buy $12,000 of AMD",
+];
 
 const TerminalPage = () => {
   const { user } = useAuth();
   const [command, setCommand] = useState("");
   const [loading, setLoading] = useState(false);
   const [lastParsed, setLastParsed] = useState<ParsedTrade[] | null>(null);
+  const [executionResults, setExecutionResults] = useState<AlpacaResult[] | null>(null);
 
   const handleExecute = async () => {
     if (!command.trim() || !user) return;
     setLoading(true);
     setLastParsed(null);
+    setExecutionResults(null);
 
     try {
       const { data, error } = await supabase.functions.invoke("parse-trade", {
@@ -53,29 +61,32 @@ const TerminalPage = () => {
       }
 
       const trades: ParsedTrade[] = data.trades;
+      const results: AlpacaResult[] = data.results || [];
       setLastParsed(trades);
+      setExecutionResults(results);
 
       // Log the trade
       await supabase.from("trade_logs").insert({
         user_id: user.id,
         command_text: command,
         parsed_json: trades as any,
-        status: "executed",
+        status: results.every((r) => r.success) ? "executed" : "partial",
       });
 
-      // Create positions & update cash
-      for (const trade of trades) {
-        const price = getMockPrice(trade.asset);
-        const shares = Math.floor(trade.amount_usd / price);
+      // Sync DB for successful trades
+      for (const result of results) {
+        if (!result.success) continue;
+        const trade = result.trade;
 
         if (trade.action === "Buy" || trade.action === "Short") {
+          const price = trade.amount_usd; // notional amount sent
           await supabase.from("positions").insert({
             user_id: user.id,
             ticker: trade.asset,
             position_type: trade.action === "Short" ? "Short" : "Long",
-            shares,
-            avg_entry_price: price,
-            current_price: price,
+            shares: 0, // actual fill comes from Alpaca async
+            avg_entry_price: 0,
+            current_price: 0,
           });
 
           const { data: pf } = await supabase
@@ -92,9 +103,21 @@ const TerminalPage = () => {
         }
       }
 
-      toast.success("AI Command Executed", {
-        description: `Parsed ${trades.length} trade(s) from your strategy.`,
-      });
+      // Show toast per result
+      const successes = results.filter((r) => r.success).length;
+      const failures = results.filter((r) => !r.success);
+
+      if (successes > 0) {
+        toast.success("Trades Submitted to Alpaca", {
+          description: `${successes} order(s) accepted by Alpaca Paper Trading.`,
+        });
+      }
+      for (const fail of failures) {
+        toast.error(`Alpaca rejected: ${fail.trade.asset}`, {
+          description: fail.error || "Unknown Alpaca error",
+        });
+      }
+
       setCommand("");
     } catch (err: any) {
       toast.error("Unexpected error", { description: err.message });
@@ -115,7 +138,7 @@ const TerminalPage = () => {
             </h2>
           </div>
           <p className="text-muted-foreground text-sm mb-6">
-            Enter natural language trading commands. The AI will parse your strategy into structured orders using a real LLM.
+            Enter natural language trading commands. AI parses your strategy, then executes via Alpaca Paper Trading.
           </p>
 
           <div className="space-y-4">
@@ -140,7 +163,7 @@ const TerminalPage = () => {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  AI is analyzing...
+                  AI is analyzing & executing...
                 </>
               ) : (
                 <>
@@ -160,44 +183,66 @@ const TerminalPage = () => {
                 </h3>
               </div>
               <div className="divide-y divide-border">
-                {lastParsed.map((trade, i) => (
-                  <div key={i} className="p-4 bg-card">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm font-mono">
-                      <div>
-                        <span className="text-muted-foreground text-xs block">Action</span>
-                        <span className={trade.action === "Short" || trade.action === "Liquidate" ? "text-destructive" : "text-primary"}>
-                          {trade.action}
-                        </span>
+                {lastParsed.map((trade, i) => {
+                  const result = executionResults?.[i];
+                  return (
+                    <div key={i} className="p-4 bg-card">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-mono text-muted-foreground">Trade #{i + 1}</span>
+                        {result && (
+                          <span className={`flex items-center gap-1 text-xs font-mono ${result.success ? "text-primary" : "text-destructive"}`}>
+                            {result.success ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                            {result.success ? "Submitted" : "Rejected"}
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs block">Asset</span>
-                        <span className="text-foreground font-bold">{trade.asset}</span>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm font-mono">
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Action</span>
+                          <span className={trade.action === "Short" || trade.action === "Liquidate" ? "text-destructive" : "text-primary"}>
+                            {trade.action}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Asset</span>
+                          <span className="text-foreground font-bold">{trade.asset}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Amount</span>
+                          <span className="text-foreground">${trade.amount_usd?.toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Order Type</span>
+                          <span className="text-foreground">{trade.order_type}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Stop Loss</span>
+                          <span className="text-foreground">{trade.stop_loss_pct != null ? `${trade.stop_loss_pct}%` : "—"}</span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground text-xs block">Take Profit</span>
+                          <span className="text-foreground">{trade.take_profit_pct != null ? `${trade.take_profit_pct}%` : "—"}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs block">Amount</span>
-                        <span className="text-foreground">${trade.amount_usd?.toLocaleString()}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs block">Order Type</span>
-                        <span className="text-foreground">{trade.order_type}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs block">Stop Loss</span>
-                        <span className="text-foreground">{trade.stop_loss_pct != null ? `${trade.stop_loss_pct}%` : "—"}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs block">Take Profit</span>
-                        <span className="text-foreground">{trade.take_profit_pct != null ? `${trade.take_profit_pct}%` : "—"}</span>
-                      </div>
+                      {result && !result.success && (
+                        <div className="mt-2 text-xs font-mono text-destructive bg-destructive/10 rounded px-3 py-2">
+                          ⚠ {result.error}
+                        </div>
+                      )}
+                      {result?.alpaca_order_id && (
+                        <div className="mt-2 text-xs font-mono text-muted-foreground">
+                          Order ID: {result.alpaca_order_id}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="bg-secondary/50 px-4 py-2 border-t border-border">
                 <details className="text-xs font-mono text-muted-foreground">
                   <summary className="cursor-pointer hover:text-foreground transition-colors">Raw JSON</summary>
                   <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-foreground">
-                    {JSON.stringify(lastParsed, null, 2)}
+                    {JSON.stringify({ trades: lastParsed, results: executionResults }, null, 2)}
                   </pre>
                 </details>
               </div>
@@ -208,13 +253,7 @@ const TerminalPage = () => {
         <div className="mt-4 bg-card border border-border rounded-lg p-4">
           <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-3">Example Commands</h3>
           <div className="space-y-2">
-            {[
-              "Go long $10,000 on NVDA with a 5% stop-loss",
-              "Short $5,000 of INTC",
-              "Buy $15,000 of AAPL with a 3% stop-loss and 10% take-profit",
-              "Go long $20,000 on MSFT, and short $8,000 of TSLA",
-              "Rebalance my portfolio: liquidate INTC and buy $12,000 of AMD",
-            ].map((ex) => (
+            {EXAMPLE_COMMANDS.map((ex) => (
               <button
                 key={ex}
                 onClick={() => setCommand(ex)}

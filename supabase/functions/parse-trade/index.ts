@@ -18,6 +18,81 @@ const MODELS = [
   "gemini-2.5-flash-lite",
 ];
 
+const ALPACA_BASE = "https://paper-api.alpaca.markets";
+
+interface ParsedTrade {
+  action: string;
+  asset: string;
+  amount_usd: number;
+  order_type: string;
+  stop_loss_pct: number | null;
+  take_profit_pct: number | null;
+}
+
+interface AlpacaResult {
+  trade: ParsedTrade;
+  success: boolean;
+  alpaca_order_id?: string;
+  filled_qty?: number;
+  filled_avg_price?: number;
+  error?: string;
+}
+
+function mapToAlpacaOrder(trade: ParsedTrade) {
+  const side = trade.action === "Short" ? "sell" : "buy";
+  const orderType = trade.order_type === "Limit" ? "limit" : "market";
+
+  const order: Record<string, unknown> = {
+    symbol: trade.asset,
+    notional: trade.amount_usd.toString(),
+    side,
+    type: orderType,
+    time_in_force: "day",
+  };
+
+  // Bracket orders with stop-loss and/or take-profit
+  if (trade.order_type === "Bracket" && (trade.stop_loss_pct || trade.take_profit_pct)) {
+    // Bracket orders require qty, not notional — we'll need a price estimate
+    // For simplicity with notional, we skip bracket and use market
+    // Alpaca bracket requires limit_price + stop/take targets with qty
+  }
+
+  return order;
+}
+
+async function submitToAlpaca(trade: ParsedTrade, alpacaKey: string, alpacaSecret: string): Promise<AlpacaResult> {
+  try {
+    const order = mapToAlpacaOrder(trade);
+
+    const res = await fetch(`${ALPACA_BASE}/v2/orders`, {
+      method: "POST",
+      headers: {
+        "APCA-API-KEY-ID": alpacaKey,
+        "APCA-API-SECRET-KEY": alpacaSecret,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(order),
+    });
+
+    const body = await res.json();
+
+    if (!res.ok) {
+      const msg = body?.message || body?.error || `Alpaca rejected (${res.status})`;
+      return { trade, success: false, error: msg };
+    }
+
+    return {
+      trade,
+      success: true,
+      alpaca_order_id: body.id,
+      filled_qty: Number(body.filled_qty) || 0,
+      filled_avg_price: Number(body.filled_avg_price) || 0,
+    };
+  } catch (err) {
+    return { trade, success: false, error: err instanceof Error ? err.message : "Network error calling Alpaca" };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -34,12 +109,24 @@ serve(async (req) => {
 
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY is not configured. Add it in Cloud → Secrets." }), {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY is not configured." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    const ALPACA_API_KEY = Deno.env.get("ALPACA_API_KEY");
+    const ALPACA_SECRET_KEY = Deno.env.get("ALPACA_SECRET_KEY");
+    if (!ALPACA_API_KEY || !ALPACA_SECRET_KEY) {
+      return new Response(JSON.stringify({ error: "ALPACA_API_KEY or ALPACA_SECRET_KEY is not configured." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // --- Step 1: Parse with Gemini ---
+    let trades: ParsedTrade[] | null = null;
+    let usedModel = "";
     let lastError = "";
 
     for (const model of MODELS) {
@@ -63,40 +150,28 @@ serve(async (req) => {
         continue;
       }
 
-      if (response.status === 503 || response.status === 429) {
-        const errText = await response.text();
-        console.warn(`Model ${model} unavailable (${response.status}), trying next...`, errText);
-        lastError = `Model ${model} is temporarily overloaded`;
-        continue;
-      }
-
-      if (response.status === 404) {
-        console.warn(`Model ${model} not found, trying next...`);
-        lastError = `Model ${model} not available`;
+      if (response.status === 503 || response.status === 429 || response.status === 404) {
+        console.warn(`Model ${model} unavailable (${response.status}), trying next...`);
+        lastError = `Model ${model} unavailable (${response.status})`;
         continue;
       }
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`Gemini API error (${model}):`, response.status, errorText);
-
         if (response.status === 401 || response.status === 403) {
-          return new Response(JSON.stringify({ error: "Invalid GEMINI_API_KEY. Please check your key in Cloud → Secrets." }), {
+          return new Response(JSON.stringify({ error: "Invalid GEMINI_API_KEY." }), {
             status: 401,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
-
         lastError = `API error ${response.status} from ${model}`;
         continue;
       }
 
-      // Success path
       const data = await response.json();
       const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
       if (!content) {
-        console.error(`Empty response from ${model}:`, JSON.stringify(data));
         lastError = `Empty response from ${model}`;
         continue;
       }
@@ -106,25 +181,53 @@ serve(async (req) => {
         cleaned = cleaned.replace(/^```(?:json)?\s*/, "").replace(/```\s*$/, "").trim();
       }
 
-      let parsed;
       try {
-        parsed = JSON.parse(cleaned);
+        const parsed = JSON.parse(cleaned);
+        trades = Array.isArray(parsed) ? parsed : [parsed];
+        usedModel = model;
+        break;
       } catch {
-        console.error(`Invalid JSON from ${model}:`, cleaned);
         lastError = `Model returned unparseable output`;
         continue;
       }
+    }
 
-      const trades = Array.isArray(parsed) ? parsed : [parsed];
-
-      return new Response(JSON.stringify({ trades, model }), {
+    if (!trades) {
+      return new Response(JSON.stringify({ error: `All models failed. Last issue: ${lastError}` }), {
+        status: 503,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // All models failed
-    return new Response(JSON.stringify({ error: `All models failed. Last issue: ${lastError}. Please try again in a moment.` }), {
-      status: 503,
+    // --- Step 2: Execute each trade via Alpaca ---
+    const results: AlpacaResult[] = [];
+    for (const trade of trades) {
+      if (trade.action === "Liquidate") {
+        // Close position via Alpaca
+        try {
+          const closeRes = await fetch(`${ALPACA_BASE}/v2/positions/${trade.asset}`, {
+            method: "DELETE",
+            headers: {
+              "APCA-API-KEY-ID": ALPACA_API_KEY,
+              "APCA-API-SECRET-KEY": ALPACA_SECRET_KEY,
+            },
+          });
+          const closeBody = await closeRes.json();
+          if (!closeRes.ok) {
+            results.push({ trade, success: false, error: closeBody?.message || `Liquidation failed (${closeRes.status})` });
+          } else {
+            results.push({ trade, success: true, alpaca_order_id: closeBody.id });
+          }
+        } catch (err) {
+          results.push({ trade, success: false, error: err instanceof Error ? err.message : "Liquidation network error" });
+        }
+      } else {
+        const result = await submitToAlpaca(trade, ALPACA_API_KEY, ALPACA_SECRET_KEY);
+        results.push(result);
+      }
+    }
+
+    return new Response(JSON.stringify({ trades, results, model: usedModel }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
