@@ -36,28 +36,83 @@ interface AlpacaResult {
   filled_qty?: number;
   filled_avg_price?: number;
   error?: string;
+  rounding_info?: string;
 }
 
-function mapToAlpacaOrder(trade: ParsedTrade) {
+const CRYPTO_TICKERS = new Set(["BTC", "ETH", "LTC", "BCH", "DOGE", "SHIB", "SOL", "AVAX", "UNI", "LINK", "AAVE", "DOT", "MATIC"]);
+
+function isCrypto(asset: string): boolean {
+  const base = asset.replace(/USD$/, "").replace(/\/USD$/, "");
+  return CRYPTO_TICKERS.has(base.toUpperCase());
+}
+
+async function fetchCurrentPrice(asset: string, alpacaKey: string, alpacaSecret: string): Promise<number | null> {
+  try {
+    // Try stocks/latest quote first
+    const url = `${ALPACA_BASE}/../data.alpaca.markets/v2/stocks/${asset}/trades/latest`;
+    // Use Alpaca data API
+    const res = await fetch(`https://data.alpaca.markets/v2/stocks/${asset}/trades/latest`, {
+      headers: {
+        "APCA-API-KEY-ID": alpacaKey,
+        "APCA-API-SECRET-KEY": alpacaSecret,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.trade?.p || null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function buildAlpacaOrder(trade: ParsedTrade, alpacaKey: string, alpacaSecret: string): Promise<{ order: Record<string, unknown>; rounding_info?: string }> {
   const side = trade.action === "Short" ? "sell" : "buy";
   const orderType = trade.order_type === "Limit" ? "limit" : "market";
 
   const order: Record<string, unknown> = {
     symbol: trade.asset,
-    notional: trade.amount_usd.toString(),
     side,
     type: orderType,
     time_in_force: "day",
   };
 
-  // Bracket orders with stop-loss and/or take-profit
-  if (trade.order_type === "Bracket" && (trade.stop_loss_pct || trade.take_profit_pct)) {
-    // Bracket orders require qty, not notional — we'll need a price estimate
-    // For simplicity with notional, we skip bracket and use market
-    // Alpaca bracket requires limit_price + stop/take targets with qty
+  if (trade.action === "Short") {
+    const crypto = isCrypto(trade.asset);
+    const price = await fetchCurrentPrice(trade.asset, alpacaKey, alpacaSecret);
+
+    if (price && price > 0) {
+      if (crypto) {
+        // Crypto supports fractional shorting
+        const qty = trade.amount_usd / price;
+        order.qty = qty.toFixed(8);
+      } else {
+        // Stocks: round down to whole shares
+        const rawQty = trade.amount_usd / price;
+        const wholeQty = Math.floor(rawQty);
+        if (wholeQty < 1) {
+          return { order, rounding_info: `Cannot short: $${trade.amount_usd} < 1 share at $${price.toFixed(2)}` };
+        }
+        order.qty = wholeQty.toString();
+        const executedAmount = wholeQty * price;
+        const diff = trade.amount_usd - executedAmount;
+        let rounding_info: string | undefined;
+        if (diff > 1) {
+          rounding_info = `Short rounded to ${wholeQty} share(s) ($${executedAmount.toFixed(0)} executed at ~$${price.toFixed(2)}/share)`;
+        }
+        return { order, rounding_info };
+      }
+    } else {
+      // Fallback: can't get price, try notional and let Alpaca decide
+      order.notional = trade.amount_usd.toString();
+    }
+  } else {
+    // Buy/Rebalance: use notional (supports fractional)
+    order.notional = trade.amount_usd.toString();
   }
 
-  return order;
+  return { order };
 }
 
 async function submitToAlpaca(trade: ParsedTrade, alpacaKey: string, alpacaSecret: string): Promise<AlpacaResult> {
