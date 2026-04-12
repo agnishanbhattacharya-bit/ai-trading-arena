@@ -32,13 +32,13 @@ export const Watchlist = ({ onSelectTicker, selectedTicker }: WatchlistProps) =>
             onClick={() => onSelectTicker(item.symbol)}
             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-all ${
               isSelected
-                ? "bg-primary/10 border border-primary/20"
-                : "hover:bg-accent/30 border border-transparent"
+                ? "bg-foreground/8 border border-foreground/10"
+                : "hover:bg-foreground/5 border border-transparent"
             }`}
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className={`font-mono font-semibold text-sm ${isSelected ? "text-primary" : "text-foreground"}`}>
+                <span className={`font-mono font-medium text-sm ${isSelected ? "text-foreground" : "text-foreground/80"}`}>
                   {item.symbol}
                 </span>
                 <span className={`flex items-center gap-0.5 text-xs font-mono ${isPositive ? "text-profit" : "text-loss"}`}>
@@ -47,15 +47,11 @@ export const Watchlist = ({ onSelectTicker, selectedTicker }: WatchlistProps) =>
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground font-mono">
-                  H {item.high.toFixed(2)}
-                </span>
-                <span className="text-xs text-muted-foreground font-mono">
-                  L {item.low.toFixed(2)}
-                </span>
+                <span className="text-xs text-muted-foreground font-mono">H {item.high.toFixed(2)}</span>
+                <span className="text-xs text-muted-foreground font-mono">L {item.low.toFixed(2)}</span>
               </div>
             </div>
-            <span className="font-mono font-medium text-sm text-foreground">
+            <span className="font-mono font-medium text-sm text-foreground/80">
               ${item.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </span>
           </motion.button>
