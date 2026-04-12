@@ -25,46 +25,43 @@ const Dashboard = () => {
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="h-10 flex items-center border-b border-border/30 px-3 gap-3 bg-card/30">
+          <header className="h-10 flex items-center border-b border-border/20 px-3 gap-3 bg-card/30">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground">
               <Menu className="w-4 h-4" />
             </SidebarTrigger>
             <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-xs text-primary tracking-widest">VANGUARD</span>
-              <span className="text-[10px] text-muted-foreground font-mono">COMMAND CENTER</span>
+              <span className="font-semibold text-xs text-foreground/80 tracking-wide">Vanguard</span>
+              <span className="text-[10px] text-muted-foreground">Terminal</span>
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-[hsl(var(--profit))] pulse-glow" />
               <span className="text-[10px] font-mono text-muted-foreground">LIVE</span>
             </div>
           </header>
 
-          {/* Ticker Tape */}
           <TickerTape />
 
           {/* Main Workspace */}
           <div className="flex-1 p-3 overflow-hidden">
             <div className="grid grid-cols-12 gap-3 h-full" style={{ minHeight: "calc(100vh - 120px)" }}>
-              {/* Left Column - Market Scanner */}
+              {/* Left Column */}
               <motion.div
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ type: "spring", stiffness: 200, damping: 25, delay: 0.1 }}
                 className="col-span-12 lg:col-span-2 glass-card flex flex-col overflow-hidden"
               >
-                <div className="p-3 border-b border-border/30">
+                <div className="p-3 border-b border-border/20">
                   <GlobalSearch onSelectTicker={setSelectedTicker} selectedTicker={selectedTicker} />
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
-                  <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider px-2 mb-2">
-                    Watchlist
-                  </p>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-2 mb-2">Watchlist</p>
                   <Watchlist onSelectTicker={setSelectedTicker} selectedTicker={selectedTicker} />
                 </div>
               </motion.div>
 
-              {/* Center Column - Chart */}
+              {/* Center Column */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -74,7 +71,7 @@ const Dashboard = () => {
                 <ChartWidget ticker={selectedTicker} />
               </motion.div>
 
-              {/* Right Column - Execution & Portfolio */}
+              {/* Right Column */}
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}

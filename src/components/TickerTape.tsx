@@ -19,7 +19,7 @@ export const TickerTape = () => {
   const tickerItems = [...TICKERS, ...TICKERS];
 
   return (
-    <div className="w-full h-8 bg-card/80 border-b border-border/50 overflow-hidden relative">
+    <div className="w-full h-8 bg-card/50 border-b border-border/20 overflow-hidden relative">
       <div className="absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-background to-transparent z-10" />
       <div className="absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-background to-transparent z-10" />
       <div className="flex items-center h-full ticker-scroll whitespace-nowrap">
@@ -27,7 +27,7 @@ export const TickerTape = () => {
           const isPositive = ticker.change >= 0;
           return (
             <div key={`${ticker.symbol}-${i}`} className="inline-flex items-center gap-1.5 px-4 text-xs">
-              <span className="font-mono font-semibold text-foreground">{ticker.symbol}</span>
+              <span className="font-mono font-medium text-foreground/80">{ticker.symbol}</span>
               <span className="font-mono text-muted-foreground">
                 ${ticker.price.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </span>

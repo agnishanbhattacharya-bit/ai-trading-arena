@@ -1,4 +1,4 @@
-import { BarChart3, Trophy, History, User, Zap } from "lucide-react";
+import { BarChart3, Trophy, History, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -31,14 +31,14 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border/50">
+    <Sidebar collapsible="icon" className="border-r border-border/30">
       <SidebarHeader className="p-3 flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-          <Zap className="w-4 h-4 text-primary" />
+        <div className="w-8 h-8 rounded-lg bg-foreground/5 flex items-center justify-center border border-border/50">
+          <span className="text-foreground/70 text-xs font-semibold">V</span>
         </div>
         {!collapsed && (
-          <span className="font-mono font-bold text-sm text-primary tracking-wider">
-            VANGUARD
+          <span className="font-semibold text-sm text-foreground/80 tracking-wide">
+            Vanguard
           </span>
         )}
       </SidebarHeader>
@@ -57,8 +57,8 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end
-                      className="hover:bg-accent/50"
-                      activeClassName="bg-accent text-primary font-medium"
+                      className="hover:bg-foreground/5"
+                      activeClassName="bg-foreground/10 text-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
                       {!collapsed && <span className="text-sm">{item.title}</span>}

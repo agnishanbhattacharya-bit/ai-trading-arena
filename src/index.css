@@ -6,56 +6,55 @@
 
 @layer base {
   :root {
-    --background: 240 6% 4%;
-    --foreground: 210 20% 92%;
+    --background: 0 0% 5%;
+    --foreground: 0 0% 93%;
 
-    --card: 240 5% 7%;
-    --card-foreground: 210 20% 92%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 93%;
 
-    --popover: 240 5% 7%;
-    --popover-foreground: 210 20% 92%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 93%;
 
-    --primary: 160 100% 50%;
-    --primary-foreground: 240 6% 4%;
+    --primary: 0 0% 82%;
+    --primary-foreground: 0 0% 5%;
 
-    --secondary: 240 5% 10%;
-    --secondary-foreground: 210 20% 80%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 70%;
 
-    --muted: 240 5% 12%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 0 0% 13%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 240 5% 14%;
-    --accent-foreground: 160 100% 50%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 82%;
 
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5% 12%;
-    --input: 240 5% 12%;
-    --ring: 160 100% 50%;
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 0 0% 82%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --profit: 160 100% 50%;
-    --loss: 0 72% 51%;
-    --warning: 38 92% 50%;
+    --profit: 142 60% 45%;
+    --loss: 0 55% 52%;
+    --warning: 38 80% 50%;
 
-    --sidebar-background: 240 6% 5%;
-    --sidebar-foreground: 210 20% 70%;
-    --sidebar-primary: 160 100% 50%;
-    --sidebar-primary-foreground: 240 6% 4%;
-    --sidebar-accent: 240 5% 10%;
-    --sidebar-accent-foreground: 160 100% 50%;
-    --sidebar-border: 240 5% 12%;
-    --sidebar-ring: 160 100% 50%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 60%;
+    --sidebar-primary: 0 0% 82%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 0 0% 82%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 0 0% 82%;
 
-    --terminal-bg: 240 6% 3%;
-    --terminal-border: 160 100% 50%;
-    --glow: 0 0 20px hsl(160 100% 50% / 0.15);
+    --terminal-bg: 0 0% 4%;
+    --terminal-border: 0 0% 20%;
 
-    --glass-bg: hsl(240 5% 8% / 0.6);
-    --glass-border: hsl(160 100% 50% / 0.12);
-    --glass-blur: 16px;
+    --glass-bg: hsla(0, 0%, 9%, 0.7);
+    --glass-border: hsla(0, 0%, 100%, 0.06);
+    --glass-blur: 20px;
   }
 }
 
@@ -66,7 +65,9 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
@@ -80,7 +81,7 @@
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius);
   }
 
   .glass-card-hover {
@@ -88,21 +89,17 @@
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius);
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
   }
 
   .glass-card-hover:hover {
-    border-color: hsl(160 100% 50% / 0.3);
-    box-shadow: 0 0 20px hsl(160 100% 50% / 0.08);
+    border-color: hsla(0, 0%, 100%, 0.12);
+    box-shadow: 0 4px 24px hsla(0, 0%, 0%, 0.3);
   }
 
   .glow-border {
-    box-shadow: 0 0 15px hsl(160 100% 50% / 0.1), inset 0 0 15px hsl(160 100% 50% / 0.05);
-  }
-
-  .glow-neon {
-    box-shadow: 0 0 10px hsl(160 100% 50% / 0.2), 0 0 30px hsl(160 100% 50% / 0.1);
+    box-shadow: 0 0 0 1px hsla(0, 0%, 100%, 0.06);
   }
 
   .text-profit {
@@ -131,11 +128,11 @@
   }
 
   .pulse-glow {
-    animation: pulse-glow 2s ease-in-out infinite;
+    animation: pulse-glow 3s ease-in-out infinite;
   }
 
   @keyframes pulse-glow {
-    0%, 100% { box-shadow: 0 0 5px hsl(160 100% 50% / 0.2); }
-    50% { box-shadow: 0 0 20px hsl(160 100% 50% / 0.4); }
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
   }
 }

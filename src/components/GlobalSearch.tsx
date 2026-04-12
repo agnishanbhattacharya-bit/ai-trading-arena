@@ -62,19 +62,13 @@ export const GlobalSearch = ({ onSelectTicker, selectedTicker }: GlobalSearchPro
         <input
           ref={inputRef}
           value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIsOpen(true);
-          }}
+          onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
           onFocus={() => setIsOpen(true)}
-          placeholder="Search ticker..."
-          className="w-full bg-secondary/50 border border-border/50 rounded-lg pl-9 pr-8 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 focus:border-primary/30 transition-all"
+          placeholder="Search ticker…"
+          className="w-full bg-foreground/[0.03] border border-border/50 rounded-lg pl-9 pr-8 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-foreground/15 transition-all"
         />
         {query && (
-          <button
-            onClick={() => { setQuery(""); inputRef.current?.focus(); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2"
-          >
+          <button onClick={() => { setQuery(""); inputRef.current?.focus(); }} className="absolute right-3 top-1/2 -translate-y-1/2">
             <X className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
           </button>
         )}
@@ -95,11 +89,11 @@ export const GlobalSearch = ({ onSelectTicker, selectedTicker }: GlobalSearchPro
                 onClick={() => handleSelect(t.symbol)}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
                   selectedTicker === t.symbol
-                    ? "bg-primary/10 text-primary"
-                    : "hover:bg-accent/50 text-foreground"
+                    ? "bg-foreground/10 text-foreground"
+                    : "hover:bg-foreground/5 text-foreground/80"
                 }`}
               >
-                <span className="font-mono font-semibold">{t.symbol}</span>
+                <span className="font-mono font-medium">{t.symbol}</span>
                 <span className="text-xs text-muted-foreground truncate ml-2">{t.name}</span>
               </button>
             ))}
